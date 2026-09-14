@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MYRIA contract dApp example</title>
+</head>
+<body>
+  <button id="connect">Connect MYRIA Wallet</button>
+  <button id="invoke" disabled>Invoke contract</button>
+  <pre id="output" aria-live="polite"></pre>
+
+  <script src="../dist/myria-dapp.iife.js"></script>
+  <script>
+    const NETWORK_ID = 'REPLACE_WITH_THE_64_CHARACTER_GENESIS_ID';
+    const CONTRACT_ID = 'REPLACE_WITH_THE_64_CHARACTER_CONTRACT_ID';
+    const sdk = MyriaDapp.createMyriaDapp();
+    const output = document.querySelector('#output');
+    const invoke = document.querySelector('#invoke');
+    let contract;
+
+    sdk.onStatus(event => {
+      output.textContent = JSON.stringify(event, null, 2);
+    });
+
+    document.querySelector('#connect').addEventListener('click', async () => {
+      try {
+        let connection;
+        try {
+          connection = await sdk.restoreConnection({networkId: NETWORK_ID});
+        } catch (error) {
+          if (!['NO_REMEMBERED_CONNECTION', 'NOT_CONNECTED'].includes(error.code)) throw error;
+          connection = await sdk.connect({networkId: NETWORK_ID});
+        }
+
+        const balance = await sdk.getBalance(connection);
+        contract = await sdk.loadContract({...connection, contractId: CONTRACT_ID});
+        invoke.disabled = false;
+        output.textContent = JSON.stringify({connection, balance, contractId: contract.contractId}, null, 2);
+      } catch (error) {
+        output.textContent = JSON.stringify({code: error.code, message: error.message}, null, 2);
+      }
+    });
+
+    invoke.addEventListener('click', async () => {
+      invoke.disabled = true;
+      try {
+        const result = await contract.invoke({
+          input: {action: 'example', value: 42},
+          amount: '0'
+        });
+        output.textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        output.textContent = JSON.stringify({code: error.code, message: error.message}, null, 2);
+      } finally {
+        invoke.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
