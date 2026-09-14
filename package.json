@@ -30,5 +30,6 @@
   },
   "homepage": "https://github.com/myria-network/Wallet-DApp-SDK#readme",
   "bugs": {"url": "https://github.com/myria-network/Wallet-DApp-SDK/issues"},
+  "publishConfig": {"access": "public", "provenance": true},
   "devDependencies": {"esbuild": "0.25.12"}
 }
