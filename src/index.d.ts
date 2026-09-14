@@ -39,3 +39,12 @@ export declare class MyriaDappClient {
  invokeContract(request:ContractRequest&{contractId:string}):Promise<MyriaContractResult>;
 }
 export declare function createMyriaDapp(options?:MyriaDappOptions):MyriaDappClient;
+export interface TokenAvatarPixel {x:number;y:number;size:number;opacity:number;highlight:boolean}
+export interface TokenAvatarFragment {x:number;y:number;size:number;opacity:number}
+export interface TokenAvatarArt {primary:string;secondary:string;glow:string;background:string;gridOffset:number;pixels:TokenAvatarPixel[];fragments:TokenAvatarFragment[]}
+export interface TokenAvatarOptions {assetId:string;symbol?:string;name?:string;scale?:number}
+export interface TokenAvatarCanvas {width:number;height:number;getContext(...args:any[]):any;toDataURL(type?:string):string}
+export declare function tokenAvatarArt(assetId:string,symbol?:string):TokenAvatarArt;
+export declare function tokenInitial(symbol?:string,name?:string):string;
+export declare function drawTokenAvatar<T extends TokenAvatarCanvas>(canvas:T,options:TokenAvatarOptions):T;
+export declare function tokenAvatarPng(assetId:string,symbol?:string,name?:string):string;

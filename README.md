@@ -27,7 +27,8 @@ import {
   createMyriaDapp,
   MyriaDappError,
   myriaAmountToUnits,
-  myriaUnitsToAmount
+  myriaUnitsToAmount,
+  tokenAvatarPng
 } from '@myria-network/dapp';
 ```
 
@@ -106,6 +107,18 @@ Connection approval is bound to the exact website origin and Genesis. The dApp r
 - Cancel pending calls with `AbortSignal`.
 
 Read the [complete API reference](./API.md) and [data model](./DATA_MODEL.md) before integrating production flows.
+
+## Token images
+
+Every dApp and community Observer can derive the same Pixel Blast portrait from a verified `AssetID`:
+
+```js
+import {tokenAvatarPng} from '@myria-network/dapp';
+
+tokenImage.src = tokenAvatarPng(asset.assetId, asset.symbol, asset.name);
+```
+
+The result is a cached `data:image/png;base64` URL. The artwork is presentation only; applications must still verify the token definition and accepted transactions.
 
 ## Browser requirements
 

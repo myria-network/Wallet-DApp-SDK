@@ -156,3 +156,4 @@ export class MyriaDappClient {
 }
 
 export function createMyriaDapp(options){return new MyriaDappClient(options);}
+export {tokenAvatarArt,tokenInitial,drawTokenAvatar,tokenAvatarPng} from './token-avatar.js';

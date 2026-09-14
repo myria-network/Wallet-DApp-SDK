@@ -10,10 +10,24 @@
 | `MyriaDappError` | SDK error with a stable `code`. |
 | `myriaAmountToUnits(value)` | Converts exact decimal MYR text into atomic units. |
 | `myriaUnitsToAmount(value)` | Converts atomic-unit text into a trimmed decimal MYR amount. |
+| `tokenAvatarArt(assetId, symbol?)` | Returns deterministic Pixel Blast drawing instructions for a token. |
+| `tokenInitial(symbol?, name?)` | Returns the single-letter token mark; MYR and TMYR always return `M`. |
+| `drawTokenAvatar(canvas, options)` | Draws the token portrait into a browser canvas. |
+| `tokenAvatarPng(assetId, symbol?, name?)` | Returns a cached PNG base64 data URL. |
 | `MYRIA_DECIMALS` | Native MYR precision used by the SDK: `9`. |
 | `MYRIA_CHROME_EXTENSION_ID` | Default compatible Chromium extension identifier. |
 
 All result structures are defined in [DATA_MODEL.md](./DATA_MODEL.md) and shipped as TypeScript declarations.
+
+## Token portraits
+
+```js
+import {tokenAvatarPng} from '@myria-network/dapp';
+
+const src = tokenAvatarPng(assetId, symbol, name);
+```
+
+The image is derived locally from the verified `AssetID`. It does not replace protocol verification. MYR and TMYR always use the letter `M` and the violet palette.
 
 ## Create a client
 

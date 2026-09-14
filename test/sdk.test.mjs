@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {createMyriaDapp,MyriaDappError,MYRIA_DECIMALS,myriaAmountToUnits,myriaUnitsToAmount} from '../src/index.js';
+import {createMyriaDapp,MyriaDappError,MYRIA_DECIMALS,myriaAmountToUnits,myriaUnitsToAmount,tokenAvatarArt,tokenInitial} from '../src/index.js';
 
 class Event {
   listeners=[];
@@ -83,12 +83,22 @@ test('MYR amounts preserve all nine Genesis decimals without floating point',()=
   assert.throws(()=>myriaAmountToUnits(0.1),error=>error.code==='INVALID_AMOUNT');
 });
 
+test('token portraits are deterministic, dense and identify MYR with M and violet',()=>{
+  const assetId='42'.repeat(32);
+  const first=tokenAvatarArt(assetId,'TMYR'),second=tokenAvatarArt(assetId,'TMYR');
+  assert.deepEqual(first,second);
+  assert.equal(tokenInitial('TMYR','Test MYR'),'M');
+  assert.equal(first.primary,'#a78bfa');
+  assert.ok(first.pixels.length>=70,`expected a dense portrait, got ${first.pixels.length} pixels`);
+  assert.notDeepEqual(tokenAvatarArt('43'.repeat(32),'ABC'),first);
+  assert.throws(()=>tokenAvatarArt('not-an-asset','ABC'),/INVALID_ASSET_ID/);
+});
+
 test('public documentation covers every SDK method and result structure',async()=>{
   const api=await readFile(new URL('../API.md',import.meta.url),'utf8');
   const model=await readFile(new URL('../DATA_MODEL.md',import.meta.url),'utf8');
   const readme=await readFile(new URL('../README.md',import.meta.url),'utf8');
-  for(const method of ['status','onStatus','rememberedConnection','connect','restoreConnection','disconnect','getBalance','getContracts','loadContract','invoke','invokeContract','myriaAmountToUnits','myriaUnitsToAmount'])assert.ok(api.includes('`'+method),`API.md must document ${method}`);
+  for(const method of ['status','onStatus','rememberedConnection','connect','restoreConnection','disconnect','getBalance','getContracts','loadContract','invoke','invokeContract','myriaAmountToUnits','myriaUnitsToAmount','tokenAvatarArt','tokenInitial','drawTokenAvatar','tokenAvatarPng'])assert.ok(api.includes('`'+method),`API.md must document ${method}`);
   for(const structure of ['MyriaConnection','MyriaBalance','MyriaContractCatalog','MyriaContractDefinition','MyriaContractResult','MyriaStatusEvent'])assert.ok(model.includes(structure),`DATA_MODEL.md must document ${structure}`);
   for(const text of [api,model,readme])assert.doesNotMatch(text,/SvelteKit|Amazon Web Services|\bAWS\b|\bEC2\b|CloudFront/i);
 });
-

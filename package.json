@@ -1,7 +1,7 @@
 {
   "name": "@myria-network/dapp",
-  "version": "0.1.0",
-  "description": "Browser SDK for connecting dApps to MYRIA Wallet and invoking deployed MYRIA contracts",
+  "version": "0.2.0",
+  "description": "Browser SDK for connecting MYRIA Wallet dApps and using MYRIA smart contracts",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
@@ -29,7 +29,13 @@
     "url": "git+https://github.com/myria-network/Wallet-DApp-SDK.git"
   },
   "homepage": "https://github.com/myria-network/Wallet-DApp-SDK#readme",
-  "bugs": {"url": "https://github.com/myria-network/Wallet-DApp-SDK/issues"},
-  "publishConfig": {"access": "public", "provenance": true},
+  "bugs": {
+    "url": "https://github.com/myria-network/Wallet-DApp-SDK/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "dependencies": {"@noble/hashes":"2.0.1"},
   "devDependencies": {"esbuild": "0.25.12"}
 }
