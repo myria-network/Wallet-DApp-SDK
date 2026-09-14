@@ -1,6 +1,6 @@
 {
   "name": "@myria-network/dapp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Browser SDK for connecting MYRIA Wallet dApps and using MYRIA smart contracts",
   "type": "module",
   "sideEffects": false,
