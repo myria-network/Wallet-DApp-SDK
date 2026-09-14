@@ -16,8 +16,11 @@ The SDK supports Chromium and Firefox through the same public API. It does not h
 ## Install
 
 ```bash
-npm install github:myria-network/Wallet-DApp-SDK
+npm install @myria-network/dapp
 ```
+
+The current `0.x` line is a public preview. The `next` channel can be selected
+explicitly with `npm install @myria-network/dapp@next`.
 
 ```js
 import {
