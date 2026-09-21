@@ -18,7 +18,7 @@ interface MyriaConnection {
 }
 ```
 
-`networkId` identifies the Genesis. `address` is the exact public wallet address selected and approved by the user.
+`networkId` identifies the Genesis. `address` is the exact public wallet address selected and approved by the user. Local aliases and display names stay inside the wallet and are not disclosed to the site.
 
 ## SDK status
 
@@ -81,6 +81,23 @@ interface MyriaBalance extends MyriaConnection {
 ```
 
 `observedUnits` is the native balance in atomic units. `null` means the wallet does not have enough verified local evidence to produce it. `display` is wallet-formatted text. `conflicts` counts known conflicting outgoing evidence. The structure never includes custom-token units in the native balance.
+
+## Wallet assets
+
+```ts
+interface MyriaWalletAssets extends MyriaConnection {
+  assets: {
+    assetId: string;
+    name: string;
+    symbol: string;
+    decimals: number;
+    supplyPolicy: 'GENESIS' | 'FIXED';
+    balanceUnits: string;
+  }[];
+}
+```
+
+`MyriaWalletAssets` is a bounded read of assets known to the approved address. `balanceUnits` is observed and does not prove that every unit remains spendable. Names and symbols are display data; the asset ID and verified transaction evidence are authoritative.
 
 ## Contract catalog
 

@@ -1,9 +1,11 @@
 export type MyriaBrowser='chromium'|'firefox'|'unknown';
-export type MyriaOperation='connect'|'restore'|'disconnect'|'balance'|'contracts'|'load-contract'|'invoke';
+export type MyriaOperation='connect'|'restore'|'disconnect'|'balance'|'assets'|'contracts'|'load-contract'|'invoke';
 export type MyriaState='opening'|'awaiting-approval'|'reading'|'executing'|'success'|'error'|'cancelled';
 export interface MyriaStatusEvent {operation:MyriaOperation;state:MyriaState;at:number;requestId?:string;stage?:string;code?:string;result?:unknown}
 export interface MyriaConnection {networkId:string;address:string}
 export interface MyriaBalance extends MyriaConnection {observedUnits:string|null;display:string|null;status:string;conflicts:number;balanceType:'OBSERVED_NOT_PROVEN_SPENDABLE'}
+export interface MyriaWalletAsset {assetId:string;name:string;symbol:string;decimals:number;supplyPolicy:'GENESIS'|'FIXED';balanceUnits:string}
+export interface MyriaWalletAssets extends MyriaConnection {assets:MyriaWalletAsset[]}
 export interface MyriaContractDefinition {contractId:string;wasmId:string;owner:string}
 export interface MyriaContractCatalog {networkId:string;invocationFeeUnits:string;invocationMaximumFeeUnits:string;feeLabel:'ESTIMATED'|'FIXED';contracts:MyriaContractDefinition[]}
 export interface MyriaContractResult {operation:'invoke';networkId:string;transactionId:string;executionStatus?:string;executionReason?:string|null;output?:unknown;[key:string]:unknown}
@@ -34,6 +36,7 @@ export declare class MyriaDappClient {
  restoreConnection(request:WalletRequest):Promise<MyriaConnection>;
  disconnect(request:WalletRequest):Promise<MyriaConnection&{disconnected:true}>;
  getBalance(request:ConnectedRequest&{address:string}):Promise<MyriaBalance>;
+ getAssets(request:ConnectedRequest&{address:string}):Promise<MyriaWalletAssets>;
  getContracts(request:ConnectedRequest&{address:string}):Promise<MyriaContractCatalog>;
  loadContract(request:ConnectedRequest&{address:string;contractId:string}):Promise<MyriaContract>;
  invokeContract(request:ContractRequest&{contractId:string}):Promise<MyriaContractResult>;

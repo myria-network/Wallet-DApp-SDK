@@ -130,6 +130,15 @@ await myria.disconnect(connection);
 
 The result contains `{networkId, address, disconnected: true}`.
 
+## `getAssets({networkId, address, signal?})`
+
+Reads up to 100 assets known to the approved wallet address and returns their public identifiers, name, symbol, precision, supply policy, and observed atomic balance. This is a read-only request. A dApp may use these assets in a picker, but the wallet must verify current spendable outputs before any operation.
+
+```js
+const {assets} = await myria.getAssets(connection);
+for (const asset of assets) console.log(asset.assetId, asset.symbol, asset.balanceUnits);
+```
+
 ## `getBalance({networkId, address, signal?})`
 
 Reads the wallet engine's observed native balance projection:

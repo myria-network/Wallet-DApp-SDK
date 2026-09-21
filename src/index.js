@@ -101,6 +101,10 @@ export class MyriaDappClient {
     this.#identity(networkId,address);
     return this.#request(CONTRACT_PORT,{type:'balance',networkId,address},{operation:'balance',signal,loadingState:'reading',loadingTimeout:52000,accept:reply=>reply?.type==='result'?this.#balance(reply.result,networkId,address):undefined});
   }
+  async getAssets({networkId,address,signal}={}){
+    this.#identity(networkId,address);
+    return this.#request(CONTRACT_PORT,{type:'assets',networkId,address},{operation:'assets',signal,loadingState:'reading',loadingTimeout:52000,accept:reply=>reply?.type==='result'?this.#assets(reply.result,networkId,address):undefined});
+  }
   async loadContract({networkId,address,contractId,signal}={}){
     this.#identity(networkId,address);required(contractId,OBJECT_ID,'INVALID_CONTRACT_ID');
     const catalog=await this.getContracts({networkId,address,signal});
@@ -124,6 +128,14 @@ export class MyriaDappClient {
     const validUnits=value?.observedUnits===null||typeof value?.observedUnits==='string'&&/^\d+$/.test(value.observedUnits);
     if(!value||value.networkId!==networkId||value.address!==address||!validUnits||value.display!==null&&typeof value.display!=='string'||typeof value.status!=='string'||!Number.isInteger(value.conflicts)||value.balanceType!=='OBSERVED_NOT_PROVEN_SPENDABLE')throw new MyriaDappError('INVALID_WALLET_RESPONSE');
     return {networkId,address,observedUnits:value.observedUnits,display:value.display,status:value.status,conflicts:value.conflicts,balanceType:value.balanceType};
+  }
+  #assets(value,networkId,address){
+    if(!value||value.networkId!==networkId||value.address!==address||!Array.isArray(value.assets)||value.assets.length>100)throw new MyriaDappError('INVALID_WALLET_RESPONSE');
+    const assets=value.assets.map(raw=>{
+      if(!raw||!OBJECT_ID.test(raw.assetId)||typeof raw.name!=='string'||raw.name.length>80||typeof raw.symbol!=='string'||raw.symbol.length>16||!Number.isInteger(raw.decimals)||raw.decimals<0||raw.decimals>18||!['GENESIS','FIXED'].includes(raw.supplyPolicy)||typeof raw.balanceUnits!=='string'||!/^\d{1,20}$/.test(raw.balanceUnits)||BigInt(raw.balanceUnits)>U64_MAX)throw new MyriaDappError('INVALID_WALLET_RESPONSE');
+      return {assetId:raw.assetId,name:raw.name,symbol:raw.symbol,decimals:raw.decimals,supplyPolicy:raw.supplyPolicy,balanceUnits:raw.balanceUnits};
+    });
+    return {networkId,address,assets};
   }
   #contractResult(value,networkId){if(!value||typeof value!=='object'||value.networkId!==networkId||!OBJECT_ID.test(value.transactionId))throw new MyriaDappError('INVALID_WALLET_RESPONSE');return {...value,operation:'invoke'};}
   #request(portName,message,options){

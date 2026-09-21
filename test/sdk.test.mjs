@@ -25,10 +25,11 @@ function fixture(){
     return new Port(name,(message,port)=>{
       if(message.type==='ping')return;sent.push({name,message});
       queueMicrotask(()=>{
-        if(name==='myria-wallet-connect'&&message.type==='connect'){port.onMessage.emit({type:'pending'});port.onMessage.emit({type:'approved',result:{networkId,address}});return;}
-        if(name==='myria-wallet-connect'&&message.type==='restore'){port.onMessage.emit({type:'approved',restored:true,result:{networkId,address}});return;}
+        if(name==='myria-wallet-connect'&&message.type==='connect'){port.onMessage.emit({type:'pending'});port.onMessage.emit({type:'approved',result:{networkId,address,name:'main',displayName:'Mi wallet'}});return;}
+        if(name==='myria-wallet-connect'&&message.type==='restore'){port.onMessage.emit({type:'approved',restored:true,result:{networkId,address,name:'main',displayName:'Mi wallet'}});return;}
         if(name==='myria-wallet-connect'&&message.type==='disconnect'){port.onMessage.emit({type:'disconnected'});return;}
         if(message.type==='balance'){port.onMessage.emit({type:'loading'});port.onMessage.emit({type:'result',result:{networkId,address,observedUnits:'10000000',display:'10',status:'READY',conflicts:0,balanceType:'OBSERVED_NOT_PROVEN_SPENDABLE'}});return;}
+        if(message.type==='assets'){port.onMessage.emit({type:'loading'});port.onMessage.emit({type:'result',result:{networkId,address,assets:[{assetId:networkId,name:'MYRIA',symbol:'MYR',decimals:9,supplyPolicy:'GENESIS',balanceUnits:'10000000'}]}});return;}
         if(message.type==='catalog'){port.onMessage.emit({type:'loading'});port.onMessage.emit({type:'result',result:{networkId,invocationFeeUnits:'20000',invocationMaximumFeeUnits:'25000',feeLabel:'ESTIMATED',contracts:[{contractId,wasmId,owner:address}]}});return;}
         if(message.type==='invoke'){port.onMessage.emit({type:'pending'});port.onMessage.emit({type:'progress',stage:'EXECUTING'});port.onMessage.emit({type:'result',result:{networkId,transactionId,executionStatus:'SUCCESS',executionReason:null,output:{answer:42}}});}
       });
@@ -37,13 +38,14 @@ function fixture(){
   return {runtime,sent,storage:new MemoryStorage()};
 }
 
-test('connect returns and remembers only the approved public address',async()=>{
+test('connect exposes only the approved public address',async()=>{
   const f=fixture(),events=[],sdk=createMyriaDapp({runtime:f.runtime,storage:f.storage});sdk.onStatus(event=>events.push(event));
-  assert.deepEqual(await sdk.connect({networkId}),{networkId,address});
-  assert.deepEqual(sdk.rememberedConnection(networkId),{networkId,address});
+  const connection={networkId,address};
+  assert.deepEqual(await sdk.connect({networkId}),connection);
+  assert.deepEqual(sdk.rememberedConnection(networkId),connection);
   assert.deepEqual(events.map(event=>event.state),['opening','awaiting-approval','success']);
   assert.equal(new Set(events.map(event=>event.requestId)).size,1);
-  assert.deepEqual(await sdk.restoreConnection({networkId}),{networkId,address});
+  assert.deepEqual(await sdk.restoreConnection({networkId}),connection);
   assert.equal((await sdk.disconnect({networkId})).disconnected,true);
   assert.equal(sdk.rememberedConnection(networkId),null);
 });
@@ -51,6 +53,7 @@ test('connect returns and remembers only the approved public address',async()=>{
 test('balance, contract loading and invocation expose validated responses and progress',async()=>{
   const f=fixture(),events=[],sdk=createMyriaDapp({runtime:f.runtime,storage:f.storage});sdk.onStatus(event=>events.push(event));
   const balance=await sdk.getBalance({networkId,address});assert.equal(balance.observedUnits,'10000000');assert.equal(balance.display,'10');
+  const assets=await sdk.getAssets({networkId,address});assert.equal(assets.assets[0].assetId,networkId);assert.equal(assets.assets[0].balanceUnits,'10000000');
   const contract=await sdk.loadContract({networkId,address,contractId});
   assert.equal(contract.contractId,contractId);assert.equal(contract.wasmId,wasmId);assert.equal(contract.owner,address);
   const catalog=await sdk.getContracts({networkId,address});assert.equal(catalog.invocationFeeUnits,'20000');assert.equal(catalog.invocationMaximumFeeUnits,'25000');assert.equal(catalog.feeLabel,'ESTIMATED');
@@ -98,7 +101,7 @@ test('public documentation covers every SDK method and result structure',async()
   const api=await readFile(new URL('../API.md',import.meta.url),'utf8');
   const model=await readFile(new URL('../DATA_MODEL.md',import.meta.url),'utf8');
   const readme=await readFile(new URL('../README.md',import.meta.url),'utf8');
-  for(const method of ['status','onStatus','rememberedConnection','connect','restoreConnection','disconnect','getBalance','getContracts','loadContract','invoke','invokeContract','myriaAmountToUnits','myriaUnitsToAmount','tokenAvatarArt','tokenInitial','drawTokenAvatar','tokenAvatarPng'])assert.ok(api.includes('`'+method),`API.md must document ${method}`);
-  for(const structure of ['MyriaConnection','MyriaBalance','MyriaContractCatalog','MyriaContractDefinition','MyriaContractResult','MyriaStatusEvent'])assert.ok(model.includes(structure),`DATA_MODEL.md must document ${structure}`);
+  for(const method of ['status','onStatus','rememberedConnection','connect','restoreConnection','disconnect','getBalance','getAssets','getContracts','loadContract','invoke','invokeContract','myriaAmountToUnits','myriaUnitsToAmount','tokenAvatarArt','tokenInitial','drawTokenAvatar','tokenAvatarPng'])assert.ok(api.includes('`'+method),`API.md must document ${method}`);
+  for(const structure of ['MyriaConnection','MyriaBalance','MyriaWalletAssets','MyriaContractCatalog','MyriaContractDefinition','MyriaContractResult','MyriaStatusEvent'])assert.ok(model.includes(structure),`DATA_MODEL.md must document ${structure}`);
   for(const text of [api,model,readme])assert.doesNotMatch(text,/SvelteKit|Amazon Web Services|\bAWS\b|\bEC2\b|CloudFront/i);
 });
