@@ -154,6 +154,16 @@ console.log(balance.conflicts);
 
 This is a read operation and does not open a signing confirmation. The SDK validates the network, address, numeric representation, conflict count, and balance type before returning it.
 
+## `syncTransaction({networkId, address, transactionId, signal?})`
+
+Asks the approved wallet to discover and validate one exact transaction involving the selected address, then returns its ledger-derived observed balance:
+
+```js
+const result = await myria.syncTransaction({...connection, transactionId});
+```
+
+The transaction ID is only a locator. The wallet verifies the transaction, its dependencies, its economic admission, and its relationship to the selected address. This read/recovery operation never signs or trusts an amount supplied by the website.
+
 ## `getContracts({networkId, address, signal?})`
 
 Reads deployed contracts known and verified by the selected wallet:

@@ -1,9 +1,10 @@
 export type MyriaBrowser='chromium'|'firefox'|'unknown';
-export type MyriaOperation='connect'|'restore'|'disconnect'|'balance'|'assets'|'contracts'|'load-contract'|'invoke';
+export type MyriaOperation='connect'|'restore'|'disconnect'|'balance'|'sync-transaction'|'assets'|'contracts'|'load-contract'|'invoke';
 export type MyriaState='opening'|'awaiting-approval'|'reading'|'executing'|'success'|'error'|'cancelled';
 export interface MyriaStatusEvent {operation:MyriaOperation;state:MyriaState;at:number;requestId?:string;stage?:string;code?:string;result?:unknown}
 export interface MyriaConnection {networkId:string;address:string}
 export interface MyriaBalance extends MyriaConnection {observedUnits:string|null;display:string|null;status:string;conflicts:number;balanceType:'OBSERVED_NOT_PROVEN_SPENDABLE'}
+export interface MyriaTransactionSync extends MyriaBalance {transactionId:string;recovered:boolean}
 export interface MyriaWalletAsset {assetId:string;name:string;symbol:string;decimals:number;supplyPolicy:'GENESIS'|'FIXED';balanceUnits:string}
 export interface MyriaWalletAssets extends MyriaConnection {assets:MyriaWalletAsset[]}
 export interface MyriaContractDefinition {contractId:string;wasmId:string;owner:string}
@@ -36,6 +37,7 @@ export declare class MyriaDappClient {
  restoreConnection(request:WalletRequest):Promise<MyriaConnection>;
  disconnect(request:WalletRequest):Promise<MyriaConnection&{disconnected:true}>;
  getBalance(request:ConnectedRequest&{address:string}):Promise<MyriaBalance>;
+ syncTransaction(request:ConnectedRequest&{address:string;transactionId:string}):Promise<MyriaTransactionSync>;
  getAssets(request:ConnectedRequest&{address:string}):Promise<MyriaWalletAssets>;
  getContracts(request:ConnectedRequest&{address:string}):Promise<MyriaContractCatalog>;
  loadContract(request:ConnectedRequest&{address:string;contractId:string}):Promise<MyriaContract>;

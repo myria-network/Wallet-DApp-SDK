@@ -99,6 +99,7 @@ Connection approval is bound to the exact website origin and Genesis. The dApp r
 - Restore the same remembered address after reload.
 - Revoke the current website approval.
 - Read the approved wallet's observed native balance.
+- Recover and validate one exact transaction involving the approved address.
 - Read the approved wallet's bounded verified asset list.
 - List deployed contracts known and verified by the wallet.
 - Load one existing contract by `ContractID`.

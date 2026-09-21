@@ -42,6 +42,7 @@ type MyriaOperation =
   | 'restore'
   | 'disconnect'
   | 'balance'
+  | 'sync-transaction'
   | 'contracts'
   | 'load-contract'
   | 'invoke';
@@ -81,6 +82,17 @@ interface MyriaBalance extends MyriaConnection {
 ```
 
 `observedUnits` is the native balance in atomic units. `null` means the wallet does not have enough verified local evidence to produce it. `display` is wallet-formatted text. `conflicts` counts known conflicting outgoing evidence. The structure never includes custom-token units in the native balance.
+
+## Transaction sync
+
+```ts
+interface MyriaTransactionSync extends MyriaBalance {
+  transactionId: string;
+  recovered: boolean;
+}
+```
+
+`recovered` reports whether this request added the verified transaction; `false` means it was already present. The returned balance always comes from the wallet ledger.
 
 ## Wallet assets
 

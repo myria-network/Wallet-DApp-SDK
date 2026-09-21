@@ -101,6 +101,14 @@ export class MyriaDappClient {
     this.#identity(networkId,address);
     return this.#request(CONTRACT_PORT,{type:'balance',networkId,address},{operation:'balance',signal,loadingState:'reading',loadingTimeout:52000,accept:reply=>reply?.type==='result'?this.#balance(reply.result,networkId,address):undefined});
   }
+  async syncTransaction({networkId,address,transactionId,signal}={}){
+    this.#identity(networkId,address);required(transactionId,OBJECT_ID,'INVALID_TRANSACTION_ID');
+    return this.#request(CONTRACT_PORT,{type:'sync-transaction',networkId,address,transactionId},{operation:'sync-transaction',signal,loadingState:'reading',loadingTimeout:52000,accept:reply=>{
+      if(reply?.type!=='result')return;
+      if(reply.result?.transactionId!==transactionId||typeof reply.result?.recovered!=='boolean')throw new MyriaDappError('INVALID_WALLET_RESPONSE');
+      return {...this.#balance(reply.result,networkId,address),transactionId,recovered:reply.result.recovered};
+    }});
+  }
   async getAssets({networkId,address,signal}={}){
     this.#identity(networkId,address);
     return this.#request(CONTRACT_PORT,{type:'assets',networkId,address},{operation:'assets',signal,loadingState:'reading',loadingTimeout:52000,accept:reply=>reply?.type==='result'?this.#assets(reply.result,networkId,address):undefined});
