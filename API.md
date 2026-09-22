@@ -130,9 +130,19 @@ await myria.disconnect(connection);
 
 The result contains `{networkId, address, disconnected: true}`.
 
+## `authorizePresaleIntent({intent, signal?})`
+
+Opens a dedicated MYRIA Wallet confirmation for one server-issued `MYRIA_PRESALE_INTENT_V1` challenge:
+
+```js
+const proof = await myria.authorizePresaleIntent({intent});
+```
+
+The wallet displays the exact website origin, MYRIA recipient, Solana payer, USDT amount and MYR amount. Approval returns `{publicKey, signature}` and emits the `authorize-presale-intent` operation with `awaiting-approval` while the wallet window is open. This is an off-chain Ed25519 authorization: it creates no MYRIA transaction, moves no funds and charges no network fee. The SDK validates the complete bounded intent and the exact proof encoding, and does not persist either value.
+
 ## `getAssets({networkId, address, signal?})`
 
-Reads up to 100 assets known to the approved wallet address and returns their public identifiers, name, symbol, precision, supply policy, and observed atomic balance. This is a read-only request. A dApp may use these assets in a picker, but the wallet must verify current spendable outputs before any operation.
+Reads up to 100 assets known to the approved wallet address and returns their public identifiers, name, symbol, precision, supply policy, and observed atomic balance. This is a read-only request. A dApp may use these assets in a picker, but a wallet must verify the current spendable outputs and pool before any trade.
 
 ```js
 const {assets} = await myria.getAssets(connection);
@@ -231,6 +241,24 @@ const result = await myria.invokeContract({
 
 Use `loadContract()` when repeated calls should stay bound to the same verified contract definition. Use `invokeContract()` when the application already controls a verified `ContractID` and does not need a reusable instance.
 
+## `requestAmmSwap({networkId, address, poolId, assetIn, amountInUnits, slippageBps?, signal?})`
+
+Requests a native AMM swap through the dedicated wallet confirmation channel:
+
+```js
+const swap = await myria.requestAmmSwap({
+  ...connection,
+  poolId: POOL_ID,
+  assetIn: ASSET_ID,
+  amountInUnits: '250000000',
+  slippageBps: 50
+});
+```
+
+`amountInUnits` is an exact positive unsigned atomic-unit string. `slippageBps` defaults to 50 (0.5%) and must be an integer from 1 through 500. The wallet independently reloads the verified pool, calculates the protected minimum and fee, shows them to the user, and signs only after visible approval.
+
+The result contains the accepted transaction and exact input/output, pool-state, fee, and propagation fields documented by `MyriaAmmSwapResult`. A result with `RECOVERY_PENDING` is still an accepted swap; only discovery publication needs background recovery and the dApp must not repeat the swap.
+
 ## Exact amount conversion
 
 ```js
@@ -280,6 +308,10 @@ try {
 | `INVALID_CONTRACT_ID` | The supplied ContractID is malformed. |
 | `CONTRACT_NOT_FOUND` | The wallet's verified catalog does not contain that deployed contract. |
 | `INVALID_CONTRACT_INPUT` | Input is not valid bounded JSON. |
+| `INVALID_AMM_SWAP` | The AMM request has missing or unexpected fields. |
+| `INVALID_POOL_ID` | The supplied PoolID is malformed. |
+| `INVALID_ASSET_ID` | The supplied AssetID is malformed. |
+| `INVALID_SLIPPAGE` | Slippage is not an integer from 1 through 500 basis points. |
 | `INVALID_AMOUNT` | Amount is not exact supported decimal text or exceeds the limit. |
 | `INVALID_UNITS` | Atomic units are malformed or exceed the limit. |
 | `INVALID_WALLET_RESPONSE` | The wallet response did not satisfy the SDK's expected structure. |

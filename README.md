@@ -1,6 +1,6 @@
 # MYRIA Wallet dApp SDK
 
-Browser JavaScript SDK for connecting a website to MYRIA Wallet, reading the selected public address and observed balance, finding an already deployed smart contract by `ContractID`, invoking it with JSON parameters, and receiving progress, results, and errors.
+Browser JavaScript SDK for connecting a website to MYRIA Wallet, reading the selected public address and observed balance, requesting native AMM swaps, finding an already deployed smart contract by `ContractID`, invoking it with JSON parameters, and receiving progress, results, and errors.
 
 The SDK supports Chromium and Firefox through the same public API. It does not hold keys, sign transactions, deploy contracts, or bypass the wallet. Every operation that signs or moves funds requires a visible confirmation inside MYRIA Wallet.
 
@@ -73,6 +73,16 @@ const result = await contract.invoke({
 });
 
 console.log(result.transactionId, result.executionStatus, result.output);
+
+const swap = await myria.requestAmmSwap({
+  ...connection,
+  poolId: 'YOUR_64_CHARACTER_POOL_ID',
+  assetIn: NETWORK_ID,
+  amountInUnits: '100000000',
+  slippageBps: 50
+});
+
+console.log(swap.transactionId, swap.amountOutUnits, swap.propagationStatus);
 ```
 
 ## How it works
@@ -98,8 +108,8 @@ Connection approval is bound to the exact website origin and Genesis. The dApp r
 - Connect and obtain the selected public wallet address.
 - Restore the same remembered address after reload.
 - Revoke the current website approval.
+- Request a visible, fee-free MYRIA signature over one short-lived presale intent without moving funds.
 - Read the approved wallet's observed native balance.
-- Recover and validate one exact transaction involving the approved address.
 - Read the approved wallet's bounded verified asset list.
 - List deployed contracts known and verified by the wallet.
 - Load one existing contract by `ContractID`.

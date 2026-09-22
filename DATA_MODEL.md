@@ -18,7 +18,35 @@ interface MyriaConnection {
 }
 ```
 
-`networkId` identifies the Genesis. `address` is the exact public wallet address selected and approved by the user. Local aliases and display names stay inside the wallet and are not disclosed to the site.
+`networkId` identifies the Genesis. `address` is the exact public wallet address selected and approved by the user.
+
+## Presale intent authorization
+
+```ts
+interface MyriaPresaleIntent {
+  version: 1;
+  challengeId: string;
+  origin: string;
+  networkId: string;
+  cluster: 'devnet' | 'testnet';
+  myriaWallet: string;
+  solanaWallet: string;
+  usdtMint: string;
+  receiverTokenAccount: string;
+  usdtAmountUnits: string;
+  myrAmountUnits: string;
+  nonce: string;
+  issuedAt: string;
+  expiresAt: string;
+}
+
+interface MyriaPresaleIntentProof {
+  publicKey: string;
+  signature: string;
+}
+```
+
+`MyriaPresaleIntent` is the complete short-lived server challenge passed unchanged to the wallet. `MyriaPresaleIntentProof` is a 44-byte Ed25519 SPKI public key and 64-byte signature encoded as Base64URL text. Neither structure authorizes a transaction or fee.
 
 ## SDK status
 
@@ -41,6 +69,7 @@ type MyriaOperation =
   | 'connect'
   | 'restore'
   | 'disconnect'
+  | 'authorize-presale-intent'
   | 'balance'
   | 'sync-transaction'
   | 'contracts'
@@ -109,7 +138,7 @@ interface MyriaWalletAssets extends MyriaConnection {
 }
 ```
 
-`MyriaWalletAssets` is a bounded read of assets known to the approved address. `balanceUnits` is observed and does not prove that every unit remains spendable. Names and symbols are display data; the asset ID and verified transaction evidence are authoritative.
+`MyriaWalletAssets` is a bounded read of assets known to the approved address. `balanceUnits` is observed and does not prove that all units remain spendable. Asset names and avatars are display data; the asset ID and transaction evidence are authoritative.
 
 ## Contract catalog
 
@@ -166,6 +195,37 @@ interface MyriaContractResult {
 ```
 
 `transactionId` identifies the accepted transaction returned by the wallet. Contract-specific output remains JSON-compatible. Applications must evaluate `executionStatus` instead of assuming every returned transaction produced a successful contract result.
+
+## Native AMM swap
+
+```ts
+interface MyriaAmmSwapRequest extends MyriaConnection {
+  poolId: string;
+  assetIn: string;
+  amountInUnits: string;
+  slippageBps?: number;
+  signal?: AbortSignal;
+}
+
+interface MyriaAmmSwapResult {
+  operation: 'amm-swap';
+  status: 'ACCEPTED_LOCAL';
+  networkId: string;
+  transactionId: string;
+  poolId: string;
+  previousStateId: string;
+  nextStateId: string;
+  assetIn: string;
+  assetOut: string;
+  amountInUnits: string;
+  amountOutUnits: string;
+  minimumOutUnits: string;
+  feeUnits: string;
+  propagationStatus: 'QUEUED' | 'RECOVERY_PENDING';
+}
+```
+
+All amount fields are exact atomic-unit strings. `QUEUED` means the accepted transaction has a durable discovery publication entry. `RECOVERY_PENDING` never invalidates or repeats the economic transaction.
 
 ## Disconnect result
 
