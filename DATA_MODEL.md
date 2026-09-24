@@ -9,6 +9,20 @@
 - Timestamps in status events are Unix milliseconds.
 - Contract input and output are JSON-compatible data.
 
+## Optional invocation debit caps
+
+```ts
+interface MyriaCallerTransfer {
+  to: string;
+  amountUnits: string;
+}
+```
+
+`ContractRequest.callerTransfers` is an optional array of 1–8 distinct native-token
+recipients with positive atomic-unit limits. These additional debits are shown
+alongside the attached `amount` and fee, then included in the signed invocation
+only after visible approval. They are not inferred by running the contract.
+
 ## Connection
 
 ```ts
@@ -226,6 +240,14 @@ interface MyriaAmmSwapResult {
 ```
 
 All amount fields are exact atomic-unit strings. `QUEUED` means the accepted transaction has a durable discovery publication entry. `RECOVERY_PENDING` never invalidates or repeats the economic transaction.
+
+## Native AMM liquidity
+
+`MyriaAmmAddLiquidityRequest` provides exact `amount0Units` and `amount1Units` in canonical pool order. `MyriaAmmRemoveLiquidityRequest` provides exact `freeLpUnits`; both include a `poolId`, connected wallet identity, optional slippage basis points and optional abort signal.
+
+`MyriaAmmLiquidityResult` carries `operation: 'amm-add-liquidity' | 'amm-remove-liquidity'`, `status: 'ACCEPTED_LOCAL'`, network, transaction, pool and state IDs, `amount0Units`, `amount1Units`, `freeLpUnits`, `feeUnits` and publication status. For adding, amounts are deposited and free LP is minted; for removing, free LP is burned and the two asset amounts are received.
+
+`MyriaAmmPoolPosition` carries network, address, pool ID, LP asset ID and freely spendable `freeLpUnits`; it excludes locked founder LP.
 
 ## Disconnect result
 

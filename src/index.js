@@ -27,7 +27,7 @@ export class MyriaContract {
     this.contractId=definition.contractId;this.wasmId=definition.wasmId;this.owner=definition.owner;
     Object.defineProperty(this,'_client',{value:client});Object.freeze(this);
   }
-  invoke({input={},amount='0',signal}={}){return this._client.invokeContract({networkId:this.networkId,address:this.address,contractId:this.contractId,input,amount,signal});}
+  invoke({input={},amount='0',callerTransfers,signal}={}){return this._client.invokeContract({networkId:this.networkId,address:this.address,contractId:this.contractId,input,amount,callerTransfers,signal});}
 }
 
 function required(value,pattern,code){
@@ -65,6 +65,20 @@ export function myriaUnitsToAmount(value){
   return `${units/1_000_000_000n}${fraction?'.'+fraction:''}`;
 }
 function amount(value='0'){myriaAmountToUnits(value);return value;}
+function callerCaps(value){
+  const code='INVALID_CALLER_TRANSFERS';
+  if(!Array.isArray(value)||!value.length||value.length>8)throw new MyriaDappError(code);
+  let total=0n;const recipients=new Set();
+  const caps=value.map(cap=>{
+    exactRequest(cap,['to','amountUnits'],[],code);
+    required(cap.to,/^myr_w_[a-z2-7]{51}[aq]$/,code);positiveUnits(cap.amountUnits,code);
+    if(recipients.has(cap.to))throw new MyriaDappError(code);
+    recipients.add(cap.to);total+=BigInt(cap.amountUnits);
+    return {to:cap.to,amountUnits:cap.amountUnits};
+  });
+  if(total>U64_MAX)throw new MyriaDappError(code);
+  return caps;
+}
 function browserName(){
   const ua=globalThis.navigator?.userAgent??'';
   return /Firefox\//i.test(ua)?'firefox':/Chrom(?:e|ium)\//i.test(ua)?'chromium':'unknown';
@@ -142,9 +156,9 @@ export class MyriaDappClient {
     if(!definition){this.#emit('load-contract','error',{code:'CONTRACT_NOT_FOUND'});throw new MyriaDappError('CONTRACT_NOT_FOUND');}
     const contract=new MyriaContract(this,{networkId,address},definition);this.#emit('load-contract','success',{result:contract});return contract;
   }
-  async invokeContract({networkId,address,contractId,input={},amount:attached='0',signal}={}){
+  async invokeContract({networkId,address,contractId,input={},amount:attached='0',callerTransfers,signal}={}){
     this.#identity(networkId,address);required(contractId,OBJECT_ID,'INVALID_CONTRACT_ID');
-    return this.#request(CONTRACT_PORT,{type:'invoke',networkId,address,contractId,input:jsonInput(input),amount:amount(attached)},{operation:'invoke',signal,pendingState:'awaiting-approval',pendingTimeout:this.#approvalTimeout,accept:reply=>reply?.type==='result'?this.#contractResult(reply.result,networkId):undefined});
+    return this.#request(CONTRACT_PORT,{type:'invoke',networkId,address,contractId,input:jsonInput(input),amount:amount(attached),...(callerTransfers!==undefined?{callerTransfers:callerCaps(callerTransfers)}:{})},{operation:'invoke',signal,pendingState:'awaiting-approval',pendingTimeout:this.#approvalTimeout,accept:reply=>reply?.type==='result'?this.#contractResult(reply.result,networkId):undefined});
   }
   async requestAmmSwap(request={}){
     exactRequest(request,['networkId','address','poolId','assetIn','amountInUnits'],['slippageBps','signal'],'INVALID_AMM_SWAP');
@@ -153,6 +167,26 @@ export class MyriaDappClient {
     if(!Number.isInteger(slippageBps)||slippageBps<1||slippageBps>500)throw new MyriaDappError('INVALID_SLIPPAGE');
     const intent={networkId,address,poolId,assetIn,amountInUnits,slippageBps};
     return this.#request(AMM_PORT,{type:'swap',...intent},{operation:'amm-swap',signal,pendingState:'awaiting-approval',pendingTimeout:this.#approvalTimeout,accept:reply=>reply?.type==='result'?this.#ammSwapResult(reply.result,intent):undefined});
+  }
+  async requestAmmAddLiquidity(request={}){
+    exactRequest(request,['networkId','address','poolId','amount0Units','amount1Units'],['slippageBps','signal'],'INVALID_AMM_LIQUIDITY');
+    const {networkId,address,poolId,amount0Units,amount1Units,signal}=request,slippageBps=request.slippageBps??50;
+    this.#identity(networkId,address);required(poolId,OBJECT_ID,'INVALID_POOL_ID');positiveUnits(amount0Units,'INVALID_AMOUNT');positiveUnits(amount1Units,'INVALID_AMOUNT');
+    if(!Number.isInteger(slippageBps)||slippageBps<1||slippageBps>500)throw new MyriaDappError('INVALID_SLIPPAGE');
+    const intent={type:'add-liquidity',networkId,address,poolId,amount0Units,amount1Units,slippageBps};
+    return this.#request(AMM_PORT,intent,{operation:'amm-add-liquidity',signal,pendingState:'awaiting-approval',pendingTimeout:this.#approvalTimeout,accept:reply=>reply?.type==='result'?this.#ammLiquidityResult(reply.result,intent):undefined});
+  }
+  async requestAmmRemoveLiquidity(request={}){
+    exactRequest(request,['networkId','address','poolId','freeLpUnits'],['slippageBps','signal'],'INVALID_AMM_LIQUIDITY');
+    const {networkId,address,poolId,freeLpUnits,signal}=request,slippageBps=request.slippageBps??50;
+    this.#identity(networkId,address);required(poolId,OBJECT_ID,'INVALID_POOL_ID');positiveUnits(freeLpUnits,'INVALID_AMOUNT');
+    if(!Number.isInteger(slippageBps)||slippageBps<1||slippageBps>500)throw new MyriaDappError('INVALID_SLIPPAGE');
+    const intent={type:'remove-liquidity',networkId,address,poolId,freeLpUnits,slippageBps};
+    return this.#request(AMM_PORT,intent,{operation:'amm-remove-liquidity',signal,pendingState:'awaiting-approval',pendingTimeout:this.#approvalTimeout,accept:reply=>reply?.type==='result'?this.#ammLiquidityResult(reply.result,intent):undefined});
+  }
+  async getAmmPoolPosition({networkId,address,poolId,signal}={}){
+    this.#identity(networkId,address);required(poolId,OBJECT_ID,'INVALID_POOL_ID');
+    return this.#request(AMM_PORT,{type:'position',networkId,address,poolId},{operation:'amm-position',signal,loadingState:'reading',loadingTimeout:52000,accept:reply=>reply?.type==='result'?this.#ammPosition(reply.result,{networkId,address,poolId}):undefined});
   }
   #identity(networkId,address){required(networkId,NETWORK_ID,'INVALID_NETWORK');required(address,WALLET_ADDRESS,'INVALID_WALLET_ADDRESS');}
   #presaleIntent(value){
@@ -200,6 +234,18 @@ export class MyriaDappClient {
     for(const field of ['amountInUnits','amountOutUnits','minimumOutUnits','feeUnits'])positiveUnits(value[field],'INVALID_WALLET_RESPONSE');
     if(value.assetOut===value.assetIn||BigInt(value.minimumOutUnits)>BigInt(value.amountOutUnits))throw new MyriaDappError('INVALID_WALLET_RESPONSE');
     return Object.fromEntries(fields.map(field=>[field,value[field]]));
+  }
+  #ammLiquidityResult(value,intent){
+    const fields=['operation','status','networkId','transactionId','poolId','previousStateId','nextStateId','amount0Units','amount1Units','freeLpUnits','feeUnits','propagationStatus'];
+    if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).sort().join(',')!==[...fields].sort().join(',')||value.operation!==`amm-${intent.type}`||value.status!=='ACCEPTED_LOCAL'||value.networkId!==intent.networkId||value.poolId!==intent.poolId||!['QUEUED','RECOVERY_PENDING'].includes(value.propagationStatus))throw new MyriaDappError('INVALID_WALLET_RESPONSE');
+    for(const field of ['transactionId','previousStateId','nextStateId'])required(value[field],OBJECT_ID,'INVALID_WALLET_RESPONSE');
+    for(const field of ['amount0Units','amount1Units','freeLpUnits','feeUnits'])positiveUnits(value[field],'INVALID_WALLET_RESPONSE');
+    if(intent.type==='add-liquidity'&&(value.amount0Units!==intent.amount0Units||value.amount1Units!==intent.amount1Units)||intent.type==='remove-liquidity'&&value.freeLpUnits!==intent.freeLpUnits)throw new MyriaDappError('INVALID_WALLET_RESPONSE');
+    return Object.fromEntries(fields.map(field=>[field,value[field]]));
+  }
+  #ammPosition(value,intent){
+    if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).sort().join(',')!=='address,freeLpUnits,lpAssetId,networkId,poolId'||value.networkId!==intent.networkId||value.address!==intent.address||value.poolId!==intent.poolId||!OBJECT_ID.test(value.lpAssetId)||typeof value.freeLpUnits!=='string'||!/^(0|[1-9][0-9]{0,19})$/.test(value.freeLpUnits)||BigInt(value.freeLpUnits)>U64_MAX)throw new MyriaDappError('INVALID_WALLET_RESPONSE');
+    return {networkId:value.networkId,address:value.address,poolId:value.poolId,lpAssetId:value.lpAssetId,freeLpUnits:value.freeLpUnits};
   }
   #request(portName,message,options){
     const {operation,signal,accept,pendingState,loadingState,pendingTimeout=this.#approvalTimeout,loadingTimeout=52000}=options;

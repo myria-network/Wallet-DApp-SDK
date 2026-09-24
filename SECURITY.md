@@ -18,6 +18,12 @@ The SDK does not receive private keys, seed phrases, passwords, raw signing meth
 
 Read methods cannot sign or move funds. Every contract invocation that signs or transfers value requires a visible wallet confirmation. The wallet is responsible for displaying the origin, selected wallet, contract, attached amount, fee, total, inputs, and additional caller debits before approval.
 
+Optional `callerTransfers` caps are validated independently by the SDK, extension
+bridge and economic engine. The confirmation preserves the requested amount and
+caps, rejects a mismatching preparation response, and signs only after the final
+confirmation. Fee preparation does not execute the contract. A contract still
+cannot debit an undeclared recipient or exceed the signed per-recipient limits.
+
 A dApp can propose malicious parameters or an excessive amount. It cannot authorize them by itself. Users and applications must still review the wallet confirmation and verify that the displayed ContractID and values match the intended action.
 
 ## Application requirements

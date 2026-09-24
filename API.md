@@ -10,10 +10,10 @@
 | `MyriaDappError` | SDK error with a stable `code`. |
 | `myriaAmountToUnits(value)` | Converts exact decimal MYR text into atomic units. |
 | `myriaUnitsToAmount(value)` | Converts atomic-unit text into a trimmed decimal MYR amount. |
-| `tokenAvatarArt(assetId, symbol?)` | Returns deterministic Pixel Blast drawing instructions for a token. |
+| `tokenAvatarArt(assetId, symbol?, name?, rootAssetId?)` | Returns deterministic Pixel Blast drawing instructions. The seed binds AssetID, symbol and name; the violet MYRIA palette is used only when `assetId === rootAssetId`. |
 | `tokenInitial(symbol?, name?)` | Returns the single-letter token mark; MYR and TMYR always return `M`. |
 | `drawTokenAvatar(canvas, options)` | Draws the token portrait into a browser canvas. |
-| `tokenAvatarPng(assetId, symbol?, name?)` | Returns a cached PNG base64 data URL. |
+| `tokenAvatarPng(assetId, symbol?, name?, rootAssetId?)` | Returns a cached PNG base64 data URL with the same root-palette rule. |
 | `MYRIA_DECIMALS` | Native MYR precision used by the SDK: `9`. |
 | `MYRIA_CHROME_EXTENSION_ID` | Default compatible Chromium extension identifier. |
 
@@ -24,10 +24,10 @@ All result structures are defined in [DATA_MODEL.md](./DATA_MODEL.md) and shippe
 ```js
 import {tokenAvatarPng} from '@myria-network/dapp';
 
-const src = tokenAvatarPng(assetId, symbol, name);
+const src = tokenAvatarPng(assetId, symbol, name, networkId);
 ```
 
-The image is derived locally from the verified `AssetID`. It does not replace protocol verification. MYR and TMYR always use the letter `M` and the violet palette.
+The image is derived locally from the verified `AssetID`, symbol and name by `@myria-network/core`, which this SDK re-exports for compatibility. It does not replace protocol verification. Pass the verified Genesis NetworkID as `rootAssetId`: only an exact AssetID match receives violet. Without a root ID, even a token named MYR or TMYR uses a custom palette. Color alone never authenticates an asset.
 
 ## Create a client
 
@@ -226,7 +226,7 @@ const result = await contract.invoke({
 
 The wallet opens a visible confirmation. A successful promise resolution means the SDK received and validated the wallet response envelope; inspect `executionStatus`, `executionReason`, and `output` for the contract outcome.
 
-## `invokeContract({networkId, address, contractId, input?, amount?, signal?})`
+## `invokeContract({networkId, address, contractId, input?, amount?, callerTransfers?, signal?})`
 
 Direct form of `contract.invoke()`:
 
@@ -240,6 +240,26 @@ const result = await myria.invokeContract({
 ```
 
 Use `loadContract()` when repeated calls should stay bound to the same verified contract definition. Use `invokeContract()` when the application already controls a verified `ContractID` and does not need a reusable instance.
+
+`callerTransfers` optionally declares additional native-token debit caps for this
+invocation, also supported by `contract.invoke()`. It is not an approval: the
+wallet displays every recipient, cap, fee and maximum total before the user
+confirms. No contract simulation is performed to discover these caps or price
+the invocation. Undeclared or excessive debits fail during verified execution.
+
+```js
+await contract.invoke({
+  input: {action: 'buy'},
+  amount: '0',
+  callerTransfers: [{to: recipientAddress, amountUnits: '2000000000'}]
+});
+```
+
+Each cap is exact atomic-unit text (here, 2 MYR), not decimal MYR or a JavaScript
+number. Use 1–8 unique canonical wallet addresses, positive caps, and a total
+at most `18446744073709551615` atomic units. Omit the field when unused; an empty
+array, duplicate destination or unknown cap field is rejected. These caps do
+not authorize later invocations and unused allowances are not paid out.
 
 ## `requestAmmSwap({networkId, address, poolId, assetIn, amountInUnits, slippageBps?, signal?})`
 
@@ -258,6 +278,14 @@ const swap = await myria.requestAmmSwap({
 `amountInUnits` is an exact positive unsigned atomic-unit string. `slippageBps` defaults to 50 (0.5%) and must be an integer from 1 through 500. The wallet independently reloads the verified pool, calculates the protected minimum and fee, shows them to the user, and signs only after visible approval.
 
 The result contains the accepted transaction and exact input/output, pool-state, fee, and propagation fields documented by `MyriaAmmSwapResult`. A result with `RECOVERY_PENDING` is still an accepted swap; only discovery publication needs background recovery and the dApp must not repeat the swap.
+
+## Native AMM liquidity
+
+`requestAmmAddLiquidity({networkId, address, poolId, amount0Units, amount1Units, slippageBps?, signal?})` and `requestAmmRemoveLiquidity({networkId, address, poolId, freeLpUnits, slippageBps?, signal?})` request a visible wallet confirmation for a verified pool. Amounts are positive atomic-unit strings; `amount0Units` and `amount1Units` follow the pool's canonical asset order, while `freeLpUnits` is the freely spendable LP amount. Slippage defaults to 50 basis points.
+
+The wallet independently reloads the pool, balances and network fee, presents the minimum LP or asset outputs, and returns `MyriaAmmLiquidityResult` only after local acceptance. A dApp must not retry an accepted operation solely because discovery publication is pending.
+
+`getAmmPoolPosition({networkId, address, poolId, signal?})` reads the connected wallet's verified, freely spendable LP balance without signing. The result is `MyriaAmmPoolPosition`. Locked founder LP is excluded.
 
 ## Exact amount conversion
 

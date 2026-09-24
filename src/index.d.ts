@@ -1,5 +1,5 @@
 export type MyriaBrowser='chromium'|'firefox'|'unknown';
-export type MyriaOperation='connect'|'restore'|'disconnect'|'authorize-presale-intent'|'balance'|'sync-transaction'|'assets'|'contracts'|'load-contract'|'invoke'|'amm-swap';
+export type MyriaOperation='connect'|'restore'|'disconnect'|'authorize-presale-intent'|'balance'|'sync-transaction'|'assets'|'contracts'|'load-contract'|'invoke'|'amm-swap'|'amm-add-liquidity'|'amm-remove-liquidity'|'amm-position';
 export type MyriaState='opening'|'awaiting-approval'|'reading'|'executing'|'success'|'error'|'cancelled';
 export interface MyriaStatusEvent {operation:MyriaOperation;state:MyriaState;at:number;requestId?:string;stage?:string;code?:string;result?:unknown}
 export interface MyriaConnection {networkId:string;address:string}
@@ -14,13 +14,19 @@ export interface MyriaContractCatalog {networkId:string;invocationFeeUnits:strin
 export interface MyriaContractResult {operation:'invoke';networkId:string;transactionId:string;executionStatus?:string;executionReason?:string|null;output?:unknown;[key:string]:unknown}
 export interface MyriaAmmSwapRequest extends MyriaConnection {poolId:string;assetIn:string;amountInUnits:string;slippageBps?:number;signal?:AbortSignal}
 export interface MyriaAmmSwapResult {operation:'amm-swap';status:'ACCEPTED_LOCAL';networkId:string;transactionId:string;poolId:string;previousStateId:string;nextStateId:string;assetIn:string;assetOut:string;amountInUnits:string;amountOutUnits:string;minimumOutUnits:string;feeUnits:string;propagationStatus:'QUEUED'|'RECOVERY_PENDING'}
+export interface MyriaAmmAddLiquidityRequest extends MyriaConnection {poolId:string;amount0Units:string;amount1Units:string;slippageBps?:number;signal?:AbortSignal}
+export interface MyriaAmmRemoveLiquidityRequest extends MyriaConnection {poolId:string;freeLpUnits:string;slippageBps?:number;signal?:AbortSignal}
+export interface MyriaAmmLiquidityResult {operation:'amm-add-liquidity'|'amm-remove-liquidity';status:'ACCEPTED_LOCAL';networkId:string;transactionId:string;poolId:string;previousStateId:string;nextStateId:string;amount0Units:string;amount1Units:string;freeLpUnits:string;feeUnits:string;propagationStatus:'QUEUED'|'RECOVERY_PENDING'}
+export interface MyriaAmmPoolPosition extends MyriaConnection {poolId:string;lpAssetId:string;freeLpUnits:string}
 export interface MyriaStorage {getItem(key:string):string|null;setItem(key:string,value:string):void;removeItem(key:string):void}
 export interface MyriaPort {postMessage(value:unknown):void;disconnect():void;onMessage:{addListener(listener:(value:any)=>void):void};onDisconnect:{addListener(listener:()=>void):void}}
 export interface MyriaRuntime {connect(extensionId:string,options:{name:string}):MyriaPort;lastError?:unknown}
 export interface MyriaDappOptions {extensionId?:string;runtime?:MyriaRuntime;storage?:MyriaStorage|false;initialTimeoutMs?:number;approvalTimeoutMs?:number}
 export interface ConnectedRequest {networkId:string;signal?:AbortSignal}
 export interface WalletRequest extends ConnectedRequest {address?:string}
-export interface ContractRequest extends ConnectedRequest {address:string;input?:unknown;amount?:string}
+/** Per-invocation native-token debit limit, shown for approval before signing. */
+export interface MyriaCallerTransfer {to:string;amountUnits:string}
+export interface ContractRequest extends ConnectedRequest {address:string;input?:unknown;amount?:string;callerTransfers?:MyriaCallerTransfer[]}
 export declare const MYRIA_CHROME_EXTENSION_ID:string;
 export declare const MYRIA_DECIMALS:9;
 /** Converts exact MYR decimal text to JSON-safe atomic units without floating point. */
@@ -30,7 +36,7 @@ export declare function myriaUnitsToAmount(value:string):string;
 export declare class MyriaDappError extends Error {readonly code:string;constructor(code:string,message?:string,cause?:unknown)}
 export declare class MyriaContract {
  readonly networkId:string;readonly address:string;readonly contractId:string;readonly wasmId:string;readonly owner:string;
- invoke(request?:{input?:unknown;amount?:string;signal?:AbortSignal}):Promise<MyriaContractResult>;
+ invoke(request?:{input?:unknown;amount?:string;callerTransfers?:MyriaCallerTransfer[];signal?:AbortSignal}):Promise<MyriaContractResult>;
 }
 export declare class MyriaDappClient {
  constructor(options?:MyriaDappOptions);
@@ -48,14 +54,10 @@ export declare class MyriaDappClient {
  loadContract(request:ConnectedRequest&{address:string;contractId:string}):Promise<MyriaContract>;
  invokeContract(request:ContractRequest&{contractId:string}):Promise<MyriaContractResult>;
  requestAmmSwap(request:MyriaAmmSwapRequest):Promise<MyriaAmmSwapResult>;
+ requestAmmAddLiquidity(request:MyriaAmmAddLiquidityRequest):Promise<MyriaAmmLiquidityResult>;
+ requestAmmRemoveLiquidity(request:MyriaAmmRemoveLiquidityRequest):Promise<MyriaAmmLiquidityResult>;
+ getAmmPoolPosition(request:MyriaConnection&{poolId:string;signal?:AbortSignal}):Promise<MyriaAmmPoolPosition>;
 }
 export declare function createMyriaDapp(options?:MyriaDappOptions):MyriaDappClient;
-export interface TokenAvatarPixel {x:number;y:number;size:number;opacity:number;highlight:boolean}
-export interface TokenAvatarFragment {x:number;y:number;size:number;opacity:number}
-export interface TokenAvatarArt {primary:string;secondary:string;glow:string;background:string;gridOffset:number;pixels:TokenAvatarPixel[];fragments:TokenAvatarFragment[]}
-export interface TokenAvatarOptions {assetId:string;symbol?:string;name?:string;scale?:number}
-export interface TokenAvatarCanvas {width:number;height:number;getContext(...args:any[]):any;toDataURL(type?:string):string}
-export declare function tokenAvatarArt(assetId:string,symbol?:string):TokenAvatarArt;
-export declare function tokenInitial(symbol?:string,name?:string):string;
-export declare function drawTokenAvatar<T extends TokenAvatarCanvas>(canvas:T,options:TokenAvatarOptions):T;
-export declare function tokenAvatarPng(assetId:string,symbol?:string,name?:string):string;
+export type {TokenAvatarPixel,TokenAvatarFragment,TokenAvatarArt,TokenAvatarOptions,TokenAvatarCanvas} from '@myria-network/core';
+export {tokenAvatarArt,tokenInitial,drawTokenAvatar,tokenAvatarPng} from '@myria-network/core';

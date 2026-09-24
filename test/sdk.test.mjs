@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createMyriaDapp,MyriaDappError,MYRIA_DECIMALS,myriaAmountToUnits,myriaUnitsToAmount,tokenAvatarArt,tokenInitial} from '../src/index.js';
+import {tokenAvatarArt as coreTokenAvatarArt} from '@myria-network/core';
 
 class Event {
   listeners=[];
@@ -88,6 +89,22 @@ test('invalid values and unknown contracts fail before an invocation is sent',as
   for(const amount of ['0.000000001','1.123456789']){await sdk.invokeContract({networkId,address,contractId,amount});assert.equal(f.sent.at(-1).message.amount,amount);}
 });
 
+test('explicit caller debit caps reach visible invocation approval without simulation',async()=>{
+ const f=fixture(),sdk=createMyriaDapp({runtime:f.runtime,storage:false});
+ const contract=await sdk.loadContract({networkId,address,contractId});f.sent.length=0;
+ const callerTransfers=[{to:'myr_w_'+'b'.repeat(51)+'a',amountUnits:'2000000000'}];
+ await contract.invoke({input:{action:'claim'},amount:'0',callerTransfers});
+ assert.deepEqual(f.sent.map(entry=>entry.message),[{type:'invoke',networkId,address,contractId,input:'{"action":"claim"}',amount:'0',callerTransfers}]);
+});
+
+test('invalid caller caps fail before opening a wallet port',async()=>{
+ const f=fixture(),sdk=createMyriaDapp({runtime:f.runtime,storage:false}),cap={to:address,amountUnits:'1'};
+ for(const callerTransfers of [[],null,[cap,cap],Array.from({length:9},()=>cap),[{...cap,amountUnits:'0'}],[{...cap,amountUnits:1}],[{...cap,amountUnits:'18446744073709551616'}],[{...cap,amountUnits:'01'}],[{...cap,to:'myr_w_'+'b'.repeat(52)}],[{...cap,unlimited:true}],[{...cap,amountUnits:'18446744073709551615'},{to:'myr_w_'+'b'.repeat(51)+'a',amountUnits:'1'}]]){
+  await assert.rejects(sdk.invokeContract({networkId,address,contractId,callerTransfers}),{code:'INVALID_CALLER_TRANSFERS'});
+ }
+ assert.equal(f.sent.length,0);
+});
+
 test('invalid transaction sync replies fail as invalid wallet responses',async()=>{
   const f=fixture({syncResult:{networkId,address,transactionId:'74'.repeat(32),recovered:'yes'}});
   const sdk=createMyriaDapp({runtime:f.runtime,storage:f.storage});
@@ -113,7 +130,6 @@ test('AMM swap uses its dedicated confirmation channel, defaults to 0.5% slippag
   assert.ok(events.some(event=>event.operation==='amm-swap'&&event.state==='awaiting-approval'));
   assert.ok(events.some(event=>event.operation==='amm-swap'&&event.state==='executing'&&event.stage==='KEEPER'));
   for(const slippageBps of [1,500]){await sdk.requestAmmSwap({networkId,address,poolId,assetIn,amountInUnits:'1',slippageBps});assert.equal(f.sent.at(-1).message.slippageBps,slippageBps);}
-  assert.equal('requestAmmAddLiquidity' in sdk,false);assert.equal('requestAmmRemoveLiquidity' in sdk,false);
 });
 
 test('AMM swap rejects malformed intent fields before opening the wallet and rejects malformed receipts',async()=>{
@@ -124,14 +140,19 @@ test('AMM swap rejects malformed intent fields before opening the wallet and rej
   await assert.rejects(malformed.requestAmmSwap(base),error=>error instanceof MyriaDappError&&error.code==='INVALID_WALLET_RESPONSE');
 });
 
-test('token portraits are deterministic, dense and identify MYR with M and violet',()=>{
+test('token portraits reserve violet for the root and diversify custom assets with name-bound seeds',()=>{
+  assert.strictEqual(tokenAvatarArt,coreTokenAvatarArt);
   const assetId='42'.repeat(32);
-  const first=tokenAvatarArt(assetId,'TMYR'),second=tokenAvatarArt(assetId,'TMYR');
+  const first=tokenAvatarArt(assetId,'TMYR','MYRIA',assetId),second=tokenAvatarArt(assetId,'TMYR','MYRIA',assetId);
   assert.deepEqual(first,second);
   assert.equal(tokenInitial('TMYR','Test MYR'),'M');
   assert.equal(first.primary,'#a78bfa');
   assert.ok(first.pixels.length>=70,`expected a dense portrait, got ${first.pixels.length} pixels`);
-  assert.notDeepEqual(tokenAvatarArt('43'.repeat(32),'ABC'),first);
+  assert.notDeepEqual(tokenAvatarArt('43'.repeat(32),'ABC','Alpha',assetId),first);
+  assert.notDeepEqual(tokenAvatarArt('43'.repeat(32),'ABC','Beta',assetId),tokenAvatarArt('43'.repeat(32),'ABC','Alpha',assetId));
+  assert.notEqual(tokenAvatarArt('43'.repeat(32),'TMYR','Impostor',assetId).primary,'#a78bfa');
+  const colors=new Set(Array.from({length:48},(_,index)=>tokenAvatarArt(index.toString(16).padStart(64,'0'),'TOK'+index,'Token '+index,assetId).primary));
+  assert.ok(colors.size>=10,`expected at least ten custom colors, got ${colors.size}`);
   assert.throws(()=>tokenAvatarArt('not-an-asset','ABC'),/INVALID_ASSET_ID/);
 });
 
