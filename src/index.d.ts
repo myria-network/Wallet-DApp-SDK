@@ -1,5 +1,5 @@
 export type MyriaBrowser='chromium'|'firefox'|'unknown';
-export type MyriaOperation='connect'|'restore'|'disconnect'|'authorize-presale-intent'|'balance'|'sync-transaction'|'assets'|'contracts'|'load-contract'|'invoke'|'amm-swap'|'amm-add-liquidity'|'amm-remove-liquidity'|'amm-position';
+export type MyriaOperation='connect'|'restore'|'disconnect'|'tips'|'authorize-presale-intent'|'balance'|'sync-transaction'|'assets'|'contracts'|'load-contract'|'invoke'|'amm-swap'|'amm-add-liquidity'|'amm-remove-liquidity'|'amm-position';
 export type MyriaState='opening'|'awaiting-approval'|'reading'|'executing'|'success'|'error'|'cancelled';
 export interface MyriaStatusEvent {operation:MyriaOperation;state:MyriaState;at:number;requestId?:string;stage?:string;code?:string;result?:unknown}
 export interface MyriaConnection {networkId:string;address:string}
@@ -23,6 +23,9 @@ export interface MyriaPort {postMessage(value:unknown):void;disconnect():void;on
 export interface MyriaRuntime {connect(extensionId:string,options:{name:string}):MyriaPort;lastError?:unknown}
 export interface MyriaDappOptions {extensionId?:string;runtime?:MyriaRuntime;storage?:MyriaStorage|false;initialTimeoutMs?:number;approvalTimeoutMs?:number}
 export interface ConnectedRequest {networkId:string;signal?:AbortSignal}
+export interface MyriaTipsRequest extends ConnectedRequest {address:string;amount?:string;alias?:string}
+/** The confirmation window opened; no payment is implied. */
+export interface MyriaTipsOpened {status:'OPENED'}
 export interface WalletRequest extends ConnectedRequest {address?:string}
 /** Per-invocation native-token debit limit, shown for approval before signing. */
 export interface MyriaCallerTransfer {to:string;amountUnits:string}
@@ -44,6 +47,7 @@ export declare class MyriaDappClient {
  onStatus(listener:(event:MyriaStatusEvent)=>void):()=>void;
  rememberedConnection(networkId:string):MyriaConnection|null;
  connect(request:ConnectedRequest):Promise<MyriaConnection>;
+ tips(request:MyriaTipsRequest):Promise<MyriaTipsOpened>;
  restoreConnection(request:WalletRequest):Promise<MyriaConnection>;
  disconnect(request:WalletRequest):Promise<MyriaConnection&{disconnected:true}>;
  authorizePresaleIntent(request:{intent:MyriaPresaleIntent;signal?:AbortSignal}):Promise<MyriaPresaleIntentProof>;

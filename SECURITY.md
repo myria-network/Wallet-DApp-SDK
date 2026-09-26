@@ -28,6 +28,14 @@ A dApp can propose malicious parameters or an excessive amount. It cannot author
 
 ## Application requirements
 
+Tips are unsigned payment suggestions. The SDK cannot pay or select the payer
+silently. The extension derives the site origin from browser sender metadata,
+rejects subframes, validates the recipient/network/amount independently and
+bounds/deduplicates modal openings. The wallet rechecks its active network and
+account and requires explicit review and confirmation before sending. A site
+can still request a malicious destination; users must review it. An alias does
+not establish ownership. `OPENED` never proves a payment or a forum reward.
+
 - Use a secure production origin.
 - Keep the expected Genesis and ContractID in reviewed application configuration.
 - Pass money as exact decimal strings and keep atomic units as strings or `BigInt`.

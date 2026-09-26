@@ -1,5 +1,15 @@
 # MYRIA Wallet dApp SDK
 
+### Tips
+
+```js
+const myria = createMyriaDapp();
+await myria.tips({networkId, address: recipient, amount: '7'});
+```
+
+Opens the wallet payment modal; the user can edit the amount and must confirm.
+`{status:'OPENED'}` means UI opened, not funds sent. See [API.md](./API.md).
+
 Browser JavaScript SDK for connecting a website to MYRIA Wallet, reading the selected public address and observed balance, requesting native AMM swaps and liquidity operations, finding an already deployed smart contract by `ContractID`, invoking it with JSON parameters, and receiving progress, results, and errors.
 
 The SDK supports Chromium and Firefox through the same public API. It does not hold keys, sign transactions, deploy contracts, or bypass the wallet. Every operation that signs or moves funds requires a visible confirmation inside MYRIA Wallet.

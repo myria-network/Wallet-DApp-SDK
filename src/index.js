@@ -113,6 +113,21 @@ export class MyriaDappClient {
     const result=await this.#request(CONNECTION_PORT,{type:'connect',networkId},{operation:'connect',signal,pendingState:'awaiting-approval',pendingTimeout:122000,accept:reply=>reply?.type==='approved'?this.#connection(reply.result,networkId):undefined});
     return this.#remember(result);
   }
+  /** Opens editable payment UI only. OPENED is not a payment receipt. */
+  async tips(request={}){
+    exactRequest(request,['networkId','address'],['amount','alias','signal'],'INVALID_TIPS');
+    const {networkId,address,signal}=request;
+    required(networkId,NETWORK_ID,'INVALID_NETWORK');
+    required(address,/^myr_w_[a-z2-7]{51}[aq]$/,'INVALID_WALLET_ADDRESS');
+    const message={type:'tips',networkId,address};
+    if(request.amount!==undefined){if(BigInt(myriaAmountToUnits(request.amount))===0n)throw new MyriaDappError('INVALID_AMOUNT');message.amount=request.amount;}
+    if(request.alias!==undefined){
+      if(typeof request.alias!=='string'||/[\p{Cc}\p{Cf}]/u.test(request.alias))throw new MyriaDappError('INVALID_ALIAS');
+      const alias=request.alias.normalize('NFKC').trim().replace(/\s+/g,' ');
+      if(!alias||alias.length>40)throw new MyriaDappError('INVALID_ALIAS');message.alias=alias;
+    }
+    return this.#request('myria-payment',message,{operation:'tips',signal,accept:reply=>reply?.type==='opened'?{status:'OPENED'}:undefined});
+  }
   async restoreConnection({networkId,address,signal}={}){
     required(networkId,NETWORK_ID,'INVALID_NETWORK');
     const target=address??this.rememberedConnection(networkId)?.address;

@@ -2,6 +2,26 @@
 
 ## Exports
 
+## Tips: open an editable wallet payment
+
+```js
+await myria.tips({networkId, address: recipient, amount: '7', alias: 'Diego'});
+```
+
+`address` is the recipient, not the payer. `amount` and `alias` are optional;
+without an amount, the user enters it in the wallet. Amounts are positive exact
+decimal strings with at most nine places. Aliases are unverified suggestions.
+No prior connection, contract, simulation, or native protocol handler is needed.
+The wallet shows the browser-authenticated requesting origin, recipient, payer,
+amount and network fee. Only the user's final confirmation sends funds.
+
+The promise returns `{status: 'OPENED'}` after the modal opens. This is **not** a
+payment receipt or proof of a paid tip. Closing the page/SDK port does not close
+the independent confirmation window. Do not retry payments automatically on
+timeouts; inspect any existing modal/history first. Production pages use HTTPS;
+HTTP is allowed only on localhost for development. This requires a wallet build
+with the `myria-payment` tips bridge (older extensions reject the request).
+
 | Export | Purpose |
 | --- | --- |
 | `createMyriaDapp(options?)` | Creates a browser client. |

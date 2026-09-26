@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {createMyriaDapp,MyriaDappError,MYRIA_DECIMALS,myriaAmountToUnits,myriaUnitsToAmount,tokenAvatarArt,tokenInitial} from '../src/index.js';
+import {createMyriaDapp,MyriaDappError,MYRIA_CHROME_EXTENSION_ID,MYRIA_DECIMALS,myriaAmountToUnits,myriaUnitsToAmount,tokenAvatarArt,tokenInitial} from '../src/index.js';
 import {tokenAvatarArt as coreTokenAvatarArt} from '@myria-network/core';
 
 class Event {
@@ -19,6 +19,17 @@ class MemoryStorage {
   values=new Map();getItem(key){return this.values.get(key)??null;}setItem(key,value){this.values.set(key,value);}removeItem(key){this.values.delete(key);}
 }
 const networkId='ab'.repeat(32),address='myr_w_'+'a'.repeat(52),contractId='91'.repeat(32),wasmId='39'.repeat(32),transactionId='73'.repeat(32),poolId='44'.repeat(32),assetIn='55'.repeat(32),assetOut='66'.repeat(32),previousStateId='77'.repeat(32),nextStateId='88'.repeat(32);
+
+test('tips opens confirmation only, without connection, contract invocation or a paid result',async()=>{
+ const sent=[],sdk=createMyriaDapp({storage:false,runtime:{connect(id,{name}){
+  assert.equal(id,MYRIA_CHROME_EXTENSION_ID);
+  return new Port(name,(message,port)=>{sent.push({name,message});queueMicrotask(()=>port.onMessage.emit({type:'opened'}));});
+ }}});
+ assert.deepEqual(await sdk.tips({networkId,address,amount:'7',alias:' Diego '}),{status:'OPENED'});
+ assert.deepEqual(sent,[{name:'myria-payment',message:{type:'tips',networkId,address,amount:'7',alias:'Diego'}}]);
+ for(const bad of [{amount:'0'},{amount:7},{amount:'1e2'},{address:'invalid'},{alias:'\u202eDiego'},{maximumFeeUnits:'0'},{amount:'18446744073.709551616'}])await assert.rejects(sdk.tips({networkId,address,amount:'7',...bad}));
+ assert.equal(sent.length,1);
+});
 
 function fixture({syncResult,presaleResult,ammResult}={}){
   const sent=[],runtime={lastError:null,connect(extensionId,{name}){

@@ -2,6 +2,22 @@
 
 ## Representation rules
 
+## MyriaTipsRequest / MyriaTipsOpened
+
+```ts
+interface MyriaTipsRequest {
+  networkId: string;
+  address: string;
+  amount?: string;
+  alias?: string;
+  signal?: AbortSignal;
+}
+interface MyriaTipsOpened { status: 'OPENED' }
+```
+
+`OPENED` acknowledges only that the editable wallet confirmation is open. It
+does not expose the payer, a signature, TransactionID or a paid result.
+
 - IDs are lowercase 64-character hexadecimal strings.
 - Wallet addresses use the public `myr_w_...` format.
 - Monetary values crossing the extension boundary are strings.
